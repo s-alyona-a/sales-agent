@@ -500,16 +500,4 @@ def collect_data(company_name: str, meeting_topic: str, inn: str = "") -> Client
     # Закрываем соединения
     os_client.close()
 
-    save_report = True
-
-    if save_report:
-        try:
-            saved_file = data.save_to_markdown(
-                'C:/Users/aasergeeva/Desktop/prep_card_agent_1/sales-agent/card_information.md'
-            )
-            console.print(f"[green]✅ Отчет сохранен: {saved_file}[/green]")
-        except Exception as e:
-            console.print(f"[red]❌ Ошибка при сохранении отчета: {e}[/red]")
-            data.errors.append(f"Сохранение отчета: {e}")
-
     return data
