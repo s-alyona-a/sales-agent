@@ -315,17 +315,51 @@ def collect_card_direct(company_name: str, meeting_topic: str, inn: str = "") ->
     t4 = time.time()
     try:
         from ddgs import DDGS
-        with DDGS() as ddgs:
-            news_results = list(
-                ddgs.text(f"{company_name} новости", max_results=5, region="ru-ru")
-            )
-            result["web_news"] = [
-                {
-                    "title": r.get("title", ""), "body": r.get("body", ""),
-                    "href": r.get("href", ""),
-                }
-                for r in news_results
-            ]
+        from urllib.parse import urlparse
+
+        core_name = strip_legal_prefix(company_name)
+        news_items = []
+
+        # Сначала пробуем ddgs.news() (настоящие новости с датой и источником)
+        try:
+            with DDGS() as ddgs:
+                news_results = list(
+                    ddgs.news(core_name or company_name, max_results=5, region="ru-ru")
+                )
+                for r in news_results:
+                    news_items.append({
+                        "title": r.get("title", ""),
+                        "body": r.get("body", ""),
+                        "href": r.get("url", r.get("href", "")),
+                        "date": r.get("date", ""),
+                        "source": r.get("source", ""),
+                    })
+        except Exception:
+            debug_log("ddgs.news() failed, fallback to text search")
+
+        # Если news() не дал результатов — ищем по новостным сайтам через text()
+        if not news_items:
+            news_sites = "site:rbc.ru OR site:kommersant.ru OR site:vedomosti.ru OR site:tass.ru OR site:ria.ru OR site:interfax.ru"
+            with DDGS() as ddgs:
+                text_results = list(
+                    ddgs.text(
+                        f"{core_name or company_name} {news_sites}",
+                        max_results=5,
+                        region="ru-ru",
+                    )
+                )
+                for r in text_results:
+                    href = r.get("href", "")
+                    source = urlparse(href).netloc.replace("www.", "") if href else ""
+                    news_items.append({
+                        "title": r.get("title", ""),
+                        "body": r.get("body", ""),
+                        "href": href,
+                        "date": "",
+                        "source": source,
+                    })
+
+        result["web_news"] = news_items
     except Exception as e:
         result["web_news_error"] = str(e)
         if DEBUG:
