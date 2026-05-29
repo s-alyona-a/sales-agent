@@ -774,6 +774,19 @@ async def api_meeting_plan(req: MeetingPlanRequest):
     return {"success": True, "plan": plan, "source": "template", "elapsed_seconds": round(elapsed, 2)}
 
 
+@app.get("/api/agent/info")
+async def api_agent_info():
+    """Активная LLM для анализа карточки и генерации плана встречи (для UI-индикатора)."""
+    llm_enabled = bool(config.GIGACHAT_API_KEY)
+    return {
+        "llm": {
+            "enabled": llm_enabled,
+            "provider": "GigaChat" if llm_enabled else None,
+            "model": config.GIGACHAT_MODEL if llm_enabled else None,
+        }
+    }
+
+
 # ─── Card Persistence (CRUD) ─────────────────────────────────────
 
 @app.get("/api/cards")
