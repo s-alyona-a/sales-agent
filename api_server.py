@@ -108,37 +108,37 @@ MEETINGS_DATA = [
     {
         "id": 1, "time": "09:30", "duration": "60 мин",
         "client": 'ООО "ТехноСфера"', "contact": "Петров Алексей, IT-директор",
-        "inn": "7701234567", "topic": "Внедрение BI-аналитики",
+        "inn": "7736207543", "topic": "Внедрение BI-аналитики",
         "status": "done", "prepStatus": "ready", "tags": ["IT", "BI", "аналитика"],
     },
     {
         "id": 2, "time": "11:00", "duration": "45 мин",
         "client": 'АО "СтройИнвест"', "contact": "Волкова Анна, Финансовый директор",
-        "inn": "7802345678", "topic": "Облачная телефония для 5 офисов",
+        "inn": "7839397230", "topic": "Облачная телефония для 5 офисов",
         "status": "upcoming", "prepStatus": "ready", "tags": ["строительство", "телефония"],
     },
     {
         "id": 3, "time": "13:30", "duration": "30 мин",
         "client": 'ООО "ЛогистикПро"', "contact": "Иванов Игорь, Генеральный директор",
-        "inn": "7803456789", "topic": "Автоматизация управления автопарком",
+        "inn": "7826156685", "topic": "Автоматизация управления автопарком",
         "status": "upcoming", "prepStatus": "pending", "tags": ["логистика", "ERP"],
     },
     {
         "id": 4, "time": "15:00", "duration": "60 мин",
         "client": 'ПАО "АльфаЭнерго"', "contact": "Смирнова Елена, Зам. гендиректора по ИТ",
-        "inn": "7704567890", "topic": "Кибербезопасность АСУ ТП — следующий этап",
+        "inn": "7706284124", "topic": "Кибербезопасность АСУ ТП — следующий этап",
         "status": "upcoming", "prepStatus": "pending", "tags": ["энергетика", "ИБ", "АСУ ТП"],
     },
     {
         "id": 5, "time": "16:30", "duration": "45 мин",
         "client": 'АО "РитейлГрупп"', "contact": "Кузнецова Ольга, Директор по развитию",
-        "inn": "7706789012", "topic": "Оптимизация цепочек поставок, WMS",
+        "inn": "7707083893", "topic": "Оптимизация цепочек поставок, WMS",
         "status": "upcoming", "prepStatus": "pending", "tags": ["ритейл", "WMS", "логистика"],
     },
     {
         "id": 6, "time": "17:30", "duration": "45 мин",
         "client": "ГУП «МосТрансАвто»", "contact": "Петров Игорь, Зам. директора",
-        "inn": "7700001122", "topic": "Масштабирование IoT-мониторинга автопарка",
+        "inn": "7705002602", "topic": "Масштабирование IoT-мониторинга автопарка",
         "status": "upcoming", "prepStatus": "pending", "tags": ["транспорт", "IoT", "мониторинг"],
     },
 ]
@@ -157,7 +157,16 @@ class CollectCardRequest(BaseModel):
     inn: str = Field(default="", alias="inn")
 
     class Config:
-        populate_by_name = True  # принимает и companyName, и company_name
+        populate_by_name = True
+
+class MeetingPlanRequest(BaseModel):
+    company_name: str = Field(..., alias="companyName")
+    meeting_topic: str = Field(default="", alias="meetingTopic")
+    contact: str = Field(default="", alias="contact")
+    card_data: dict = Field(default_factory=dict, alias="cardData")
+
+    class Config:
+        populate_by_name = True
 
 
 # ─── Вспомогательные функции ────────────────────────────────────
@@ -196,7 +205,7 @@ def normalize_response(data: Any) -> Any:
 
 # ─── Сбор карточки (прямой, без LLM) ──────────────────────────
 
-def collect_card_direct(company_name: str, meeting_topic: str, inn: str = "") -> dict[str, Any]:
+def collect_card_direct(company_name: str, meeting_topic: str, inn: str = "", on_step=None) -> dict[str, Any]:
     """Прямой сбор карточки: CRM (JSON) + OpenSearch (JSON) + WebSearch (DuckDuckGo).
 
     НЕ требует Docker. НЕ требует GigaChat.
@@ -217,7 +226,12 @@ def collect_card_direct(company_name: str, meeting_topic: str, inn: str = "") ->
         "sbar": {}
     }
 
+    def step(name, status="running", detail=""):
+        if on_step:
+            on_step(name, status, detail)
+
     # ─── 1. CRM (INN-priority) ───
+    step("crm", "running", "Поиск клиента в CRM")
     t1 = time.time()
     try:
         from crm.mock_crm import MockCRM
@@ -258,9 +272,11 @@ def collect_card_direct(company_name: str, meeting_topic: str, inn: str = "") ->
         result["crm_error"] = str(e)
         if DEBUG:
             traceback.print_exc()
+    step("crm", "done", f"CRM: {'найден' if result['crm']['client_info'] else 'не найден'}")
     debug_log(f"CRM: {time.time() - t1:.2f}s")
 
     # ─── 2. OpenSearch (INN-priority) ───
+    step("opensearch", "running", "Поиск во внутренней базе")
     t2 = time.time()
     try:
         from opensearch.client import OpenSearchClient
@@ -291,9 +307,11 @@ def collect_card_direct(company_name: str, meeting_topic: str, inn: str = "") ->
         result["opensearch_error"] = str(e)
         if DEBUG:
             traceback.print_exc()
+    step("opensearch", "done", f"OpenSearch: {len(result['opensearch'])} записей")
     debug_log(f"OpenSearch: {time.time() - t2:.2f}s")
 
     # ─── 3. Web Search (DuckDuckGo) ───
+    step("web", "running", "Поиск в интернете")
     t3 = time.time()
     try:
         from ddgs import DDGS
@@ -309,30 +327,68 @@ def collect_card_direct(company_name: str, meeting_topic: str, inn: str = "") ->
         result["web_search_error"] = str(e)
         if DEBUG:
             traceback.print_exc()
+    step("web", "done", f"Веб: {len(result.get('web_search', []))} результатов")
     debug_log(f"WebSearch: {time.time() - t3:.2f}s")
 
     # ─── 4. News ───
+    step("news", "running", "Поиск новостей")
     t4 = time.time()
     try:
         from ddgs import DDGS
-        with DDGS() as ddgs:
-            news_results = list(
-                ddgs.text(f"{company_name} новости", max_results=5, region="ru-ru")
-            )
-            result["web_news"] = [
-                {
-                    "title": r.get("title", ""), "body": r.get("body", ""),
-                    "href": r.get("href", ""),
-                }
-                for r in news_results
-            ]
+        from urllib.parse import urlparse
+
+        core_name = strip_legal_prefix(company_name)
+        news_items = []
+
+        # Сначала пробуем ddgs.news() (настоящие новости с датой и источником)
+        try:
+            with DDGS() as ddgs:
+                news_results = list(
+                    ddgs.news(core_name or company_name, max_results=5, region="ru-ru")
+                )
+                for r in news_results:
+                    news_items.append({
+                        "title": r.get("title", ""),
+                        "body": r.get("body", ""),
+                        "href": r.get("url", r.get("href", "")),
+                        "date": r.get("date", ""),
+                        "source": r.get("source", ""),
+                    })
+        except Exception:
+            debug_log("ddgs.news() failed, fallback to text search")
+
+        # Если news() не дал результатов — ищем по новостным сайтам через text()
+        if not news_items:
+            news_sites = "site:rbc.ru OR site:kommersant.ru OR site:vedomosti.ru OR site:tass.ru OR site:ria.ru OR site:interfax.ru"
+            with DDGS() as ddgs:
+                text_results = list(
+                    ddgs.text(
+                        f"{core_name or company_name} {news_sites}",
+                        max_results=5,
+                        region="ru-ru",
+                    )
+                )
+                for r in text_results:
+                    href = r.get("href", "")
+                    source = urlparse(href).netloc.replace("www.", "") if href else ""
+                    news_items.append({
+                        "title": r.get("title", ""),
+                        "body": r.get("body", ""),
+                        "href": href,
+                        "date": "",
+                        "source": source,
+                    })
+
+        result["web_news"] = news_items
     except Exception as e:
         result["web_news_error"] = str(e)
         if DEBUG:
             traceback.print_exc()
+    step("news", "done", f"Новости: {len(result.get('web_news', []))} шт.")
     debug_log(f"News: {time.time() - t4:.2f}s")
 
     # ─── 5. Vacancies ───
+    step("vacancies", "running", "Поиск вакансий")
     t5 = time.time()
     try:
         from ddgs import DDGS
@@ -348,9 +404,11 @@ def collect_card_direct(company_name: str, meeting_topic: str, inn: str = "") ->
         result["vacancies_error"] = str(e)
         if DEBUG:
             traceback.print_exc()
+    step("vacancies", "done", f"Вакансии: {len(result.get('vacancies', []))} шт.")
     debug_log(f"Vacancies: {time.time() - t5:.2f}s")
 
     # ─── 6. СБАР (Sber Analytics) — по ИНН ───
+    step("sbar", "running", "Запрос в СБАР по ИНН")
     t6 = time.time()
     try:
         if inn:
@@ -367,6 +425,8 @@ def collect_card_direct(company_name: str, meeting_topic: str, inn: str = "") ->
         result["sbar_error"] = str(e)
         if DEBUG:
             traceback.print_exc()
+    sbar_found = bool(result.get("sbar", {}).get("ogrn"))
+    step("sbar", "done", f"СБАР: {'найдена' if sbar_found else 'не найдена'}")
     debug_log(f"СБАР: {time.time() - t6:.2f}s")
 
     debug_log(f"Итого: {time.time() - t_start:.2f}s")
@@ -458,6 +518,42 @@ async def api_collect_direct(req: CollectCardRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.post("/api/agent/collect-stream")
+async def api_collect_stream(req: CollectCardRequest):
+    """SSE-стрим сбора карточки с прогрессом шагов."""
+    from starlette.responses import StreamingResponse
+    import queue, threading
+
+    if not req.company_name:
+        raise HTTPException(status_code=400, detail="companyName is required")
+
+    q: queue.Queue = queue.Queue()
+
+    def on_step(name, status, detail):
+        q.put(json.dumps({"type": "step", "step": name, "status": status, "detail": detail}))
+
+    def run_collect():
+        try:
+            data = collect_card_direct(req.company_name, req.meeting_topic, req.inn, on_step=on_step)
+            camel_data = normalize_response(data)
+            q.put(json.dumps({"type": "result", "success": True, "data": camel_data}))
+        except Exception as e:
+            q.put(json.dumps({"type": "error", "error": str(e)}))
+        finally:
+            q.put(None)
+
+    threading.Thread(target=run_collect, daemon=True).start()
+
+    def event_stream():
+        while True:
+            msg = q.get()
+            if msg is None:
+                break
+            yield f"data: {msg}\n\n"
+
+    return StreamingResponse(event_stream(), media_type="text/event-stream")
+
+
 @app.post("/api/agent/collect-card")
 async def api_collect_card(req: CollectCardRequest):
     """Полный сбор с LLM-агентом (30-120 сек). Авто-fallback на прямой."""
@@ -495,6 +591,188 @@ async def api_collect_card(req: CollectCardRequest):
             if DEBUG:
                 traceback.print_exc()
             raise HTTPException(status_code=500, detail=str(e2))
+
+# ─── Meeting Plan ──────────────────────────────────────────────────
+
+def _summarize_card_for_plan(card_data: dict) -> str:
+    """Формирует краткую сводку из card_data для промпта плана встречи."""
+    lines = []
+
+    ci = card_data.get("crm", {}).get("clientInfo") or card_data.get("crm", {}).get("client_info")
+    if ci:
+        if ci.get("industry"):
+            lines.append(f"Отрасль: {ci['industry']}")
+        if ci.get("description"):
+            lines.append(f"Описание: {ci['description']}")
+        if ci.get("status"):
+            lines.append(f"Статус клиента: {ci['status']}")
+
+    os_list = card_data.get("opensearch", [])
+    if os_list:
+        os = os_list[0]
+        rev = os.get("revenue") or os.get("employeeCount")
+        if os.get("revenue"):
+            lines.append(f"Выручка: {os['revenue']:,.0f} руб.")
+        if os.get("employee_count") or os.get("employeeCount"):
+            lines.append(f"Сотрудников: {os.get('employee_count') or os.get('employeeCount')}")
+        if os.get("region"):
+            lines.append(f"Регион: {os['region']}")
+        if os.get("notes"):
+            lines.append(f"Заметки: {os['notes']}")
+        if os.get("internal_rating") or os.get("internalRating"):
+            lines.append(f"Внутренний рейтинг: {os.get('internal_rating') or os.get('internalRating')}/10")
+
+    deals = card_data.get("crm", {}).get("deals", [])
+    if deals:
+        lines.append(f"\nСделки ({len(deals)}):")
+        for d in deals:
+            status = d.get("status", "?")
+            title = d.get("title", "?")
+            amount = d.get("amount", 0)
+            products = ", ".join(d.get("products", []))
+            lines.append(f"  [{status}] {title} — {amount:,.0f}₽ ({products})")
+
+    contacts = card_data.get("crm", {}).get("contacts", [])
+    if contacts:
+        lines.append(f"\nКонтакты ({len(contacts)}):")
+        for c in contacts:
+            lpr = " ⭐ЛПР" if c.get("is_lpr") or c.get("isLpr") else ""
+            lines.append(f"  {c.get('name', '?')} — {c.get('position', '?')}{lpr}")
+            if c.get("notes"):
+                lines.append(f"    Заметки: {c['notes']}")
+
+    interactions = card_data.get("crm", {}).get("interactions", [])
+    if interactions:
+        lines.append(f"\nПоследние взаимодействия ({len(interactions)}):")
+        for h in interactions[-5:]:
+            lines.append(f"  [{h.get('date', '?')}] {h.get('type', '?')}: {h.get('description', '')} → {h.get('outcome', '')}")
+
+    news = card_data.get("webNews") or card_data.get("web_news", [])
+    if news:
+        lines.append(f"\nНовости ({len(news)}):")
+        for n in news[:3]:
+            lines.append(f"  {n.get('title', '')}")
+
+    products = card_data.get("products", [])
+    if products:
+        lines.append(f"\nНаш каталог ({len(products)} продуктов):")
+        for p in products:
+            target = ", ".join(p.get("target_industries") or p.get("targetIndustries") or [])
+            lines.append(f"  {p.get('name', '')} ({p.get('category', '')}) — для: {target}")
+
+    return "\n".join(lines) if lines else "Данные о клиенте не собраны."
+
+
+def _generate_template_plan(company_name: str, meeting_topic: str, contact: str, card_data: dict) -> dict:
+    """Генерирует шаблонный план встречи без LLM."""
+    ci = card_data.get("crm", {}).get("clientInfo") or card_data.get("crm", {}).get("client_info") or {}
+    deals = card_data.get("crm", {}).get("deals", [])
+    contacts = card_data.get("crm", {}).get("contacts", [])
+    os_list = card_data.get("opensearch", [])
+    os = os_list[0] if os_list else {}
+
+    open_deals = [d for d in deals if d.get("status") in ("in_progress", "negotiation")]
+    won_deals = [d for d in deals if d.get("status") == "won"]
+    industry = ci.get("industry", "")
+
+    lpr_names = [c.get("name", "") for c in contacts if c.get("is_lpr") or c.get("isLpr")]
+
+    goal = f"Обсудить {meeting_topic} с {company_name}"
+    if open_deals:
+        goal += f", продвинуть {len(open_deals)} открытых сделок"
+
+    questions = [
+        f"Какие приоритетные задачи стоят перед {company_name} в этом квартале?",
+        f"Какие проблемы сейчас решаете в области {meeting_topic.lower()}?",
+        "Какой бюджет и сроки закладываете на этот проект?",
+        "Кто ещё участвует в принятии решения?",
+    ]
+    if os.get("notes"):
+        questions.append(f"Актуально ли по-прежнему: {os['notes'][:80]}?")
+
+    talking_points = []
+    if won_deals:
+        total_won = sum(d.get("amount", 0) for d in won_deals)
+        talking_points.append(f"Успешная история сотрудничества: {len(won_deals)} завершённых проектов на {total_won:,.0f} ₽")
+    if industry:
+        talking_points.append(f"Экспертиза в отрасли «{industry}»")
+    talking_points.append(f"Наше решение закрывает потребность по теме «{meeting_topic}»")
+
+    objections = [
+        {"objection": "Дорого", "response": "Рассчитать ROI на конкретных метриках клиента, показать окупаемость"},
+        {"objection": "Уже есть решение", "response": "Уточнить что не устраивает в текущем, предложить пилот для сравнения"},
+    ]
+    if open_deals:
+        objections.append({"objection": "Нужно время подумать", "response": "Предложить конкретный следующий шаг с дедлайном"})
+
+    return {
+        "goal": goal,
+        "agenda": [
+            {"time": "5 мин", "topic": "Приветствие", "notes": f"Small talk, упомянуть {contact or 'контакт'}"},
+            {"time": "10 мин", "topic": "Текущая ситуация", "notes": f"Узнать актуальные задачи по теме «{meeting_topic}»"},
+            {"time": "15 мин", "topic": "Презентация решения", "notes": f"Показать как наш продукт решает задачу"},
+            {"time": "10 мин", "topic": "Обсуждение условий", "notes": "Бюджет, сроки, формат пилота"},
+            {"time": "5 мин", "topic": "Следующие шаги", "notes": "Договориться о конкретном действии"},
+        ],
+        "keyQuestions": questions,
+        "talkingPoints": talking_points,
+        "objections": objections,
+        "nextSteps": [
+            "Назначить демо/пилот с техническими специалистами",
+            "Подготовить КП с расчётом ROI",
+            "Назначить дату следующей встречи",
+        ],
+    }
+
+
+@app.post("/api/agent/meeting-plan")
+async def api_meeting_plan(req: MeetingPlanRequest):
+    """Генерация плана встречи на основе карточки клиента."""
+    if not req.company_name:
+        raise HTTPException(status_code=400, detail="companyName is required")
+
+    t = time.time()
+    card_summary = _summarize_card_for_plan(req.card_data)
+
+    # Пробуем LLM
+    if config.GIGACHAT_API_KEY:
+        try:
+            from agent.agent import create_llm
+            from agent.prompts import MEETING_PLAN_SYSTEM_PROMPT, MEETING_PLAN_HUMAN_TEMPLATE
+            from langchain_core.messages import SystemMessage, HumanMessage
+
+            llm = create_llm()
+            human = MEETING_PLAN_HUMAN_TEMPLATE.format(
+                company_name=req.company_name,
+                meeting_topic=req.meeting_topic,
+                contact=req.contact,
+                card_summary=card_summary,
+            )
+            response = llm.invoke([
+                SystemMessage(content=MEETING_PLAN_SYSTEM_PROMPT),
+                HumanMessage(content=human),
+            ])
+
+            raw = response.content.strip()
+            # Извлекаем JSON из ответа
+            if "```json" in raw:
+                raw = raw.split("```json")[1].split("```")[0].strip()
+            elif "```" in raw:
+                raw = raw.split("```")[1].split("```")[0].strip()
+
+            plan = json.loads(raw)
+            elapsed = time.time() - t
+            return {"success": True, "plan": plan, "source": "llm", "elapsed_seconds": round(elapsed, 2)}
+        except Exception as e:
+            debug_log(f"LLM plan failed: {e}")
+            if DEBUG:
+                traceback.print_exc()
+
+    # Fallback: шаблонный план
+    plan = _generate_template_plan(req.company_name, req.meeting_topic, req.contact, req.card_data)
+    elapsed = time.time() - t
+    return {"success": True, "plan": plan, "source": "template", "elapsed_seconds": round(elapsed, 2)}
+
 
 # ─── Card Persistence (CRUD) ─────────────────────────────────────
 
@@ -564,10 +842,10 @@ if __name__ == "__main__":
     is_windows = platform.system() == "Windows"
     use_reload = not (cli_args.no_reload or is_windows)
 
-    print(f"🔧 Запуск на порту {port}")
-    print(f"   Платформа: {platform.system()}")
-    print(f"   Auto-reload: {'ВКЛ' if use_reload else 'ВЫКЛ'}")
-    print(f"   Debug: {'ВКЛ' if DEBUG else 'выкл'}")
+    print(f"Zapusk na portu {port}")
+    print(f"   Platform: {platform.system()}")
+    print(f"   Auto-reload: {'ON' if use_reload else 'OFF'}")
+    print(f"   Debug: {'ON' if DEBUG else 'off'}")
 
     uvicorn.run(
         "api_server:app",
