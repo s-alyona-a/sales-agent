@@ -144,6 +144,86 @@ MEETINGS_DATA = [
 ]
 
 
+# ─── Мок-новости для демо-компаний (ключ — ИНН) ─────────────────
+# Реальных новостей по этим компаниям в DDG нет, а text-фолбэк отдаёт
+# просто веб-поиск по названию (сайты с ИНН и т.п.), а не новости.
+# Поэтому для демо отдаём курируемые правдоподобные новости по теме.
+MOCK_NEWS: dict[str, list[dict[str, str]]] = {
+    # ООО "ТехноСфера" — BI-аналитика
+    "7736207543": [
+        {"title": "«ТехноСфера» запустила платформу предиктивной аналитики для ритейла",
+         "body": "Компания представила BI-решение с прогнозированием спроса на базе машинного обучения.",
+         "source": "РБК", "date": "2026-05-26", "href": "https://www.rbc.ru/technology_and_media/"},
+        {"title": "«ТехноСфера» отчиталась о росте выручки на 28% по итогам 2025 года",
+         "body": "Основной вклад дал сегмент корпоративной аналитики данных.",
+         "source": "Ведомости", "date": "2026-05-21", "href": "https://www.vedomosti.ru/technology"},
+        {"title": "«ТехноСфера» открыла центр разработки в Казани",
+         "body": "Планируется нанять более 200 инженеров по данным и ML в течение года.",
+         "source": "Коммерсантъ", "date": "2026-05-18", "href": "https://www.kommersant.ru/doc"},
+    ],
+    # АО "СтройИнвест" — облачная телефония
+    "7839397230": [
+        {"title": "«СтройИнвест» инвестирует 2 млрд руб. в цифровизацию офисов",
+         "body": "Программа охватывает унифицированные коммуникации и облачную телефонию.",
+         "source": "РБК", "date": "2026-05-27", "href": "https://www.rbc.ru/business/"},
+        {"title": "«СтройИнвест» переводит коммуникации пяти филиалов в облако",
+         "body": "Цель — единая номерная ёмкость и снижение затрат на связь.",
+         "source": "Ведомости", "date": "2026-05-22", "href": "https://www.vedomosti.ru/business"},
+        {"title": "«СтройИнвест» выиграл крупный тендер на застройку в Санкт-Петербурге",
+         "body": "Проект предполагает ввод более 120 тыс. кв. м недвижимости.",
+         "source": "Интерфакс", "date": "2026-05-17", "href": "https://www.interfax.ru/business/"},
+    ],
+    # ООО "ЛогистикПро" — автоматизация автопарка
+    "7826156685": [
+        {"title": "«ЛогистикПро» расширяет автопарк на 150 единиц техники",
+         "body": "Рост связан с увеличением объёмов перевозок в Северо-Западном регионе.",
+         "source": "РБК", "date": "2026-05-25", "href": "https://www.rbc.ru/business/"},
+        {"title": "«ЛогистикПро» внедряет систему управления автопарком",
+         "body": "Решение обеспечит мониторинг маршрутов и контроль расхода топлива.",
+         "source": "Ведомости", "date": "2026-05-20", "href": "https://www.vedomosti.ru/business"},
+        {"title": "«ЛогистикПро» открыла распределительный центр под Санкт-Петербургом",
+         "body": "Площадь нового хаба превышает 25 тыс. кв. м.",
+         "source": "ТАСС", "date": "2026-05-16", "href": "https://tass.ru/ekonomika"},
+    ],
+    # ПАО "АльфаЭнерго" — кибербезопасность АСУ ТП
+    "7706284124": [
+        {"title": "«АльфаЭнерго» усиливает защиту АСУ ТП на фоне роста атак на отрасль",
+         "body": "Компания развёртывает систему мониторинга промышленных сетей.",
+         "source": "Коммерсантъ", "date": "2026-05-28", "href": "https://www.kommersant.ru/doc"},
+        {"title": "«АльфаЭнерго» инвестирует в кибербезопасность промышленных объектов",
+         "body": "Бюджет программы защиты критической инфраструктуры увеличен вдвое.",
+         "source": "РБК", "date": "2026-05-23", "href": "https://www.rbc.ru/business/"},
+        {"title": "«АльфаЭнерго» прошла аудит информационной безопасности по требованиям ФСТЭК",
+         "body": "Подтверждено соответствие требованиям к значимым объектам КИИ.",
+         "source": "Интерфакс", "date": "2026-05-19", "href": "https://www.interfax.ru/business/"},
+    ],
+    # АО "РитейлГрупп" — цепочки поставок, WMS
+    "7707083893": [
+        {"title": "«РитейлГрупп» оптимизирует цепочки поставок с помощью WMS",
+         "body": "Внедрение системы управления складом сократило сроки обработки заказов.",
+         "source": "Ведомости", "date": "2026-05-26", "href": "https://www.vedomosti.ru/business"},
+        {"title": "«РитейлГрупп» открыла 40 новых магазинов в регионах",
+         "body": "Сеть продолжает экспансию в городах с населением от 100 тыс. человек.",
+         "source": "РБК", "date": "2026-05-22", "href": "https://www.rbc.ru/business/"},
+        {"title": "«РитейлГрупп» сообщила о росте онлайн-продаж на 35%",
+         "body": "Компания развивает омниканальную модель и собственную доставку.",
+         "source": "Коммерсантъ", "date": "2026-05-18", "href": "https://www.kommersant.ru/doc"},
+    ],
+    # ГУП «МосТрансАвто» — IoT-мониторинг автопарка
+    "7705002602": [
+        {"title": "«МосТрансАвто» оснастит автопарк системой IoT-мониторинга",
+         "body": "Датчики обеспечат контроль состояния техники и расхода топлива в реальном времени.",
+         "source": "РБК", "date": "2026-05-27", "href": "https://www.rbc.ru/business/"},
+        {"title": "«МосТрансАвто» обновит более 500 единиц подвижного состава",
+         "body": "Программа обновления рассчитана на ближайшие два года.",
+         "source": "ТАСС", "date": "2026-05-24", "href": "https://tass.ru/ekonomika"},
+        {"title": "«МосТрансАвто» внедряет цифровую систему контроля топлива",
+         "body": "Ожидается снижение издержек на горюче-смазочные материалы.",
+         "source": "Ведомости", "date": "2026-05-19", "href": "https://www.vedomosti.ru/business"},
+    ],
+}
+
+
 # ─── Pydantic модели ────────────────────────────────────────────
 
 from fastapi import FastAPI, HTTPException, Query, Request
@@ -338,48 +418,79 @@ def collect_card_direct(company_name: str, meeting_topic: str, inn: str = "", on
         from urllib.parse import urlparse
 
         core_name = strip_legal_prefix(company_name)
-        news_items = []
+        query_name = core_name or company_name
 
-        # Сначала пробуем ddgs.news() (настоящие новости с датой и источником)
-        try:
-            with DDGS() as ddgs:
-                news_results = list(
-                    ddgs.news(core_name or company_name, max_results=5, region="ru-ru")
-                )
-                for r in news_results:
-                    news_items.append({
-                        "title": r.get("title", ""),
-                        "body": r.get("body", ""),
-                        "href": r.get("url", r.get("href", "")),
-                        "date": r.get("date", ""),
-                        "source": r.get("source", ""),
-                    })
-        except Exception:
-            debug_log("ddgs.news() failed, fallback to text search")
+        # Демо-компании с известным ИНН: отдаём курируемые новости.
+        # По ним нет реальной выдачи в DDG, а text-фолбэк возвращает не новости,
+        # а просто веб-поиск по названию (сайты с ИНН и т.п.).
+        mock_news = MOCK_NEWS.get(inn) if inn else None
 
-        # Если news() не дал результатов — ищем по новостным сайтам через text()
-        if not news_items:
-            news_sites = "site:rbc.ru OR site:kommersant.ru OR site:vedomosti.ru OR site:tass.ru OR site:ria.ru OR site:interfax.ru"
-            with DDGS() as ddgs:
-                text_results = list(
-                    ddgs.text(
-                        f"{core_name or company_name} {news_sites}",
-                        max_results=5,
-                        region="ru-ru",
+        def _news_relevant(item: dict) -> bool:
+            """Отсев нерелевантной выдачи.
+
+            ddgs.news() при отсутствии новостей по компании отдаёт мировую
+            трендовую ленту (SpaceX, спорт и т.п.). Считаем новость релевантной,
+            только если название компании реально встречается в заголовке/теле.
+            """
+            haystack = f"{item.get('title', '')} {item.get('body', '')}".lower()
+            name = query_name.lower().strip()
+            if not name:
+                return True
+            if name in haystack:
+                return True
+            # многословное название: релевантно, если найдены все значимые слова
+            words = [w for w in name.split() if len(w) >= 4]
+            return bool(words) and all(w in haystack for w in words)
+
+        if mock_news:
+            news_items = [dict(n) for n in mock_news]
+        else:
+            news_items = []
+
+            # Сначала пробуем ddgs.news() (настоящие новости с датой и источником)
+            try:
+                with DDGS() as ddgs:
+                    news_results = list(
+                        ddgs.news(query_name, max_results=10, region="ru-ru")
                     )
-                )
-                for r in text_results:
-                    href = r.get("href", "")
-                    source = urlparse(href).netloc.replace("www.", "") if href else ""
-                    news_items.append({
-                        "title": r.get("title", ""),
-                        "body": r.get("body", ""),
-                        "href": href,
-                        "date": "",
-                        "source": source,
-                    })
+                    for r in news_results:
+                        item = {
+                            "title": r.get("title", ""),
+                            "body": r.get("body", ""),
+                            "href": r.get("url", r.get("href", "")),
+                            "date": r.get("date", ""),
+                            "source": r.get("source", ""),
+                        }
+                        if _news_relevant(item):
+                            news_items.append(item)
+            except Exception:
+                debug_log("ddgs.news() failed, fallback to text search")
 
-        result["web_news"] = news_items
+            # Если news() не дал релевантных результатов — ищем по новостным сайтам через text()
+            if not news_items:
+                news_sites = "site:rbc.ru OR site:kommersant.ru OR site:vedomosti.ru OR site:tass.ru OR site:ria.ru OR site:interfax.ru"
+                with DDGS() as ddgs:
+                    text_results = list(
+                        ddgs.text(
+                            f"{query_name} {news_sites}",
+                            max_results=10,
+                            region="ru-ru",
+                        )
+                    )
+                    for r in text_results:
+                        href = r.get("href", "")
+                        source = urlparse(href).netloc.replace("www.", "") if href else ""
+                        item = {
+                            "title": r.get("title", ""),
+                            "body": r.get("body", ""),
+                            "href": href,
+                            "date": "",
+                            "source": source,
+                        }
+                        if _news_relevant(item):
+                            news_items.append(item)
+
+        result["web_news"] = news_items[:5]
     except Exception as e:
         result["web_news_error"] = str(e)
         if DEBUG:
