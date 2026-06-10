@@ -25,6 +25,8 @@ from ddgs import DDGS
 
 import config
 
+from pathlib import Path
+
 console = Console()
 
 
@@ -497,6 +499,45 @@ def collect_data(company_name: str, meeting_topic: str, inn: str = "") -> Client
             data.errors.append(f"СБАР: {e}")
         progress.remove_task(task)
 
+        # === Шаг 9: LLM-подбор релевантных продуктов ===
+        task = progress.add_task("[cyan]9/9 Подбор релевантных продуктов (LLM)...", total=None)
+        try:
+            from agent.product_matcher import enrich_products_with_recommendations
+
+            # Формируем card_data для product_matcher из уже собранных данных
+            card_data_dict = {
+                "company_name": data.company_name,
+                "meeting_topic": data.meeting_topic,
+                "inn": data.inn,
+                "crm": {
+                    "client_info": data.crm_client_info,
+                    "deals": data.crm_deals,
+                    "contacts": data.crm_contacts,
+                    "interactions": data.crm_interactions,
+                },
+                "opensearch": data.os_results,
+                "web_news": data.web_news,
+                "vacancies": data.web_vacancies,
+                "sbar": data.sbar_data,
+            }
+            console.print(f"""ВЫВОД 1:
+            {data.crm_products}""")
+            data.crm_products = enrich_products_with_recommendations(
+                products=data.crm_products,
+                card_data=card_data_dict,
+                company_name=company_name,
+                meeting_topic=meeting_topic,
+            )
+            console.print(f"""ВЫВОД 2:
+                        {data.crm_products}""")
+            recommended_count = sum(1 for p in data.crm_products if p.get("recommended"))
+            console.print(
+                f"[green]   ✓ Рекомендовано {recommended_count} из {len(data.crm_products)} продуктов[/green]")
+        except Exception as e:
+            data.errors.append(f"Подбор продуктов: {e}")
+            console.print(f"[yellow]   ⚠️ Подбор продуктов: fallback без LLM ({e})[/yellow]")
+        progress.remove_task(task)
+
     # Закрываем соединения
     os_client.close()
 
@@ -505,7 +546,7 @@ def collect_data(company_name: str, meeting_topic: str, inn: str = "") -> Client
     if save_report:
         try:
             saved_file = data.save_to_markdown(
-                'C:/Users/aasergeeva/Desktop/sales-agent/card_information.md'
+                'C:/Users/aasergeeva/Desktop/sales_project/sales-agent/card_information.md'
             )
             console.print(f"[green]✅ Отчет сохранен: {saved_file}[/green]")
         except Exception as e:

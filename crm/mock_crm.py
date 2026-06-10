@@ -17,6 +17,10 @@ class MockCRM(CRMBase):
     def __init__(self, data_path: Path | str | None = None):
         if data_path is None:
             data_path = Path(__file__).parent / "data" / "mock_data.json"
+
+        print(f"PATH 1: {data_path}")
+        data_path = Path(__file__).parent / data_path
+        print(f"PATH 2: {data_path}")
         self._data_path = Path(data_path)
         self._data = self._load_data()
 

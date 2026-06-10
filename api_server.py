@@ -429,6 +429,26 @@ def collect_card_direct(company_name: str, meeting_topic: str, inn: str = "", on
     step("sbar", "done", f"СБАР: {'найдена' if sbar_found else 'не найдена'}")
     debug_log(f"СБАР: {time.time() - t6:.2f}s")
 
+    # ─── 7. LLM-based product recommendation ───
+    step("products", "running", "Подбор релевантных продуктов")
+    t7 = time.time()
+    try:
+        from agent.product_matcher import enrich_products_with_recommendations
+        result["products"] = enrich_products_with_recommendations(
+            products=result.get("products", []),
+            card_data=result,
+            company_name=company_name,
+            meeting_topic=meeting_topic,
+        )
+        recommended_count = sum(1 for p in result["products"] if p.get("recommended"))
+        step("products", "done", f"Рекомендовано {recommended_count} из {len(result['products'])} продуктов")
+    except Exception as e:
+        step("products", "done", f"Продукты: fallback без LLM ({len(result.get('products', []))} шт.)")
+        debug_log(f"Product matcher error: {e}")
+        if DEBUG:
+            traceback.print_exc()
+    debug_log(f"Product matcher: {time.time() - t7:.2f}s")
+
     debug_log(f"Итого: {time.time() - t_start:.2f}s")
     return result
 

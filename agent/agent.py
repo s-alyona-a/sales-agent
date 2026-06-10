@@ -110,6 +110,7 @@ def run_pipeline(company_name: str, meeting_topic: str, inn: str = "") -> dict:
     return {
         "analysis": response.content,
         "raw_data": data.to_context_string(),
+        "client_data": data,
         "errors": data.errors,
     }
 
